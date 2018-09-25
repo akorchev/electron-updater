@@ -36,7 +36,6 @@ function _load_PrivateGitHubProvider() {
 }
 
 function createClient(data, updater) {
-    // noinspection SuspiciousTypeOfGuard
     if (typeof data === "string") {
         throw (0, (_builderUtilRuntime || _load_builderUtilRuntime()).newError)("Please pass PublishConfiguration object", "ERR_UPDATER_INVALID_PROVIDER_CONFIGURATION");
     }
@@ -45,7 +44,7 @@ function createClient(data, updater) {
     switch (provider) {
         case "github":
             const githubOptions = data;
-            const token = (githubOptions.private ? process.env.GH_TOKEN || process.env.GITHUB_TOKEN : null) || githubOptions.token;
+            const token = (githubOptions.private ? process.env.GH_TOKEN : null) || githubOptions.token;
             if (token == null) {
                 return new (_GitHubProvider || _load_GitHubProvider()).GitHubProvider(githubOptions, updater, httpExecutor);
             } else {
@@ -59,8 +58,7 @@ function createClient(data, updater) {
                 channel: data.channel || null
             }, updater, provider === "spaces" /* https://github.com/minio/minio/issues/5285#issuecomment-350428955 */);
         case "generic":
-            const options = data;
-            return new (_GenericProvider || _load_GenericProvider()).GenericProvider(options, updater, options.useMultipleRangeRequest !== false && !options.url.includes("s3.amazonaws.com"));
+            return new (_GenericProvider || _load_GenericProvider()).GenericProvider(data, updater, true);
         case "bintray":
             return new (_BintrayProvider || _load_BintrayProvider()).BintrayProvider(data, httpExecutor);
         default:

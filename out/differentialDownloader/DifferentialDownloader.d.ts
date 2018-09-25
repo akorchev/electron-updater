@@ -3,7 +3,7 @@ import { BlockMapDataHolder, HttpExecutor } from "builder-util-runtime";
 import { BlockMap } from "builder-util-runtime/out/blockMapApi";
 import { OutgoingHttpHeaders, RequestOptions } from "http";
 import { Logger } from "../main";
-export interface DifferentialDownloaderOptions {
+export declare class DifferentialDownloaderOptions {
     readonly oldFile: string;
     readonly newUrl: string;
     readonly logger: Logger;
@@ -19,6 +19,7 @@ export declare abstract class DifferentialDownloader {
     fileMetadataBuffer: Buffer | null;
     private readonly logger;
     constructor(blockAwareFileInfo: BlockMapDataHolder, httpExecutor: HttpExecutor<any>, options: DifferentialDownloaderOptions);
+    protected readonly signatureSize: number;
     createRequestOptions(method?: "head" | "get", newUrl?: string | null): RequestOptions;
     protected doDownload(oldBlockMap: BlockMap, newBlockMap: BlockMap): Promise<any>;
     private downloadFile(tasks);

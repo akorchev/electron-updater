@@ -11,6 +11,12 @@ function _load_bluebirdLst() {
     return _bluebirdLst = require("bluebird-lst");
 }
 
+var _bluebirdLst2;
+
+function _load_bluebirdLst2() {
+    return _bluebirdLst2 = _interopRequireDefault(require("bluebird-lst"));
+}
+
 exports.copyData = copyData;
 
 var _builderUtilRuntime;
@@ -36,6 +42,8 @@ var _downloadPlanBuilder;
 function _load_downloadPlanBuilder() {
     return _downloadPlanBuilder = require("./downloadPlanBuilder");
 }
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 const DOUBLE_CRLF = Buffer.from("\r\n\r\n");
 var ReadState;
@@ -165,7 +173,7 @@ class DataSplitter extends (_stream || _load_stream()).Writable {
         })();
     }
     copyExistingData(index, end) {
-        return new Promise((resolve, reject) => {
+        return new (_bluebirdLst2 || _load_bluebirdLst2()).default((resolve, reject) => {
             const w = () => {
                 if (index === end) {
                     resolve();
@@ -215,9 +223,9 @@ class DataSplitter extends (_stream || _load_stream()).Writable {
         this.actualPartLength += end - start;
         const out = this.out;
         if (out.write(start === 0 && data.length === end ? data : data.slice(start, end))) {
-            return Promise.resolve();
+            return (_bluebirdLst2 || _load_bluebirdLst2()).default.resolve();
         } else {
-            return new Promise((resolve, reject) => {
+            return new (_bluebirdLst2 || _load_bluebirdLst2()).default((resolve, reject) => {
                 out.on("error", reject);
                 out.once("drain", () => {
                     out.removeListener("error", reject);

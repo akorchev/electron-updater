@@ -11,6 +11,12 @@ function _load_bluebirdLst() {
     return _bluebirdLst = require("bluebird-lst");
 }
 
+var _bluebirdLst2;
+
+function _load_bluebirdLst2() {
+    return _bluebirdLst2 = _interopRequireDefault(require("bluebird-lst"));
+}
+
 var _builderUtilRuntime;
 
 function _load_builderUtilRuntime() {
@@ -51,6 +57,12 @@ function _load_FileWithEmbeddedBlockMapDifferentialDownloader() {
     return _FileWithEmbeddedBlockMapDifferentialDownloader = require("./differentialDownloader/FileWithEmbeddedBlockMapDifferentialDownloader");
 }
 
+var _main;
+
+function _load_main() {
+    return _main = require("./main");
+}
+
 var _Provider;
 
 function _load_Provider() {
@@ -67,15 +79,11 @@ class AppImageUpdater extends (_BaseUpdater || _load_BaseUpdater()).BaseUpdater 
     }
     checkForUpdatesAndNotify() {
         if ((_electronIsDev || _load_electronIsDev()).default) {
-            return Promise.resolve(null);
+            return (_bluebirdLst2 || _load_bluebirdLst2()).default.resolve(null);
         }
         if (process.env.APPIMAGE == null) {
-            if (process.env.SNAP == null) {
-                this._logger.warn("APPIMAGE env is not defined, current application is not an AppImage");
-            } else {
-                this._logger.info("SNAP env is defined, updater is disabled");
-            }
-            return Promise.resolve(null);
+            this._logger.warn("APPIMAGE env is not defined, current application is not an AppImage");
+            return (_bluebirdLst2 || _load_bluebirdLst2()).default.resolve(null);
         }
         return super.checkForUpdatesAndNotify();
     }
@@ -93,43 +101,46 @@ class AppImageUpdater extends (_BaseUpdater || _load_BaseUpdater()).BaseUpdater 
                 cancellationToken,
                 sha512: fileInfo.info.sha512
             };
-            return yield _this.executeDownload({
-                fileExtension: "AppImage",
-                downloadOptions,
-                fileInfo,
-                updateInfo,
-                task: (() => {
-                    var _ref = (0, (_bluebirdLst || _load_bluebirdLst()).coroutine)(function* (updateFile) {
-                        const oldFile = process.env.APPIMAGE;
-                        if (oldFile == null) {
-                            throw (0, (_builderUtilRuntime || _load_builderUtilRuntime()).newError)("APPIMAGE env is not defined", "ERR_UPDATER_OLD_FILE_NOT_FOUND");
-                        }
-                        let isDownloadFull = false;
-                        try {
-                            yield new (_FileWithEmbeddedBlockMapDifferentialDownloader || _load_FileWithEmbeddedBlockMapDifferentialDownloader()).FileWithEmbeddedBlockMapDifferentialDownloader(fileInfo.info, _this.httpExecutor, {
-                                newUrl: fileInfo.url.href,
-                                oldFile,
-                                logger: _this._logger,
-                                newFile: updateFile,
-                                useMultipleRangeRequest: provider.useMultipleRangeRequest,
-                                requestHeaders
-                            }).download();
-                        } catch (e) {
-                            _this._logger.error(`Cannot download differentially, fallback to full download: ${e.stack || e}`);
-                            // during test (developer machine mac) we must throw error
-                            isDownloadFull = process.platform === "linux";
-                        }
-                        if (isDownloadFull) {
-                            yield _this.httpExecutor.download(fileInfo.url.href, updateFile, downloadOptions);
-                        }
-                        yield (0, (_fsExtraP || _load_fsExtraP()).chmod)(updateFile, 0o755);
-                    });
+            let installerPath = _this.downloadedUpdateHelper.getDownloadedFile(updateInfo, fileInfo);
+            if (installerPath != null) {
+                return [installerPath];
+            }
+            yield _this.executeDownload(downloadOptions, fileInfo, (() => {
+                var _ref = (0, (_bluebirdLst || _load_bluebirdLst()).coroutine)(function* (tempDir, destinationFile) {
+                    installerPath = destinationFile;
+                    const oldFile = process.env.APPIMAGE;
+                    if (oldFile == null) {
+                        throw (0, (_builderUtilRuntime || _load_builderUtilRuntime()).newError)("APPIMAGE env is not defined", "ERR_UPDATER_OLD_FILE_NOT_FOUND");
+                    }
+                    let isDownloadFull = false;
+                    try {
+                        yield new (_FileWithEmbeddedBlockMapDifferentialDownloader || _load_FileWithEmbeddedBlockMapDifferentialDownloader()).FileWithEmbeddedBlockMapDifferentialDownloader(fileInfo.info, _this.httpExecutor, {
+                            newUrl: fileInfo.url.href,
+                            oldFile,
+                            logger: _this._logger,
+                            newFile: installerPath,
+                            useMultipleRangeRequest: provider.useMultipleRangeRequest,
+                            requestHeaders
+                        }).download();
+                    } catch (e) {
+                        _this._logger.error(`Cannot download differentially, fallback to full download: ${e.stack || e}`);
+                        // during test (developer machine mac) we must throw error
+                        isDownloadFull = process.platform === "linux";
+                    }
+                    if (isDownloadFull) {
+                        yield _this.httpExecutor.download(fileInfo.url.href, installerPath, downloadOptions);
+                    }
+                    yield (0, (_fsExtraP || _load_fsExtraP()).chmod)(installerPath, 0o755);
+                });
 
-                    return function task(_x) {
-                        return _ref.apply(this, arguments);
-                    };
-                })()
-            });
+                return function (_x, _x2) {
+                    return _ref.apply(this, arguments);
+                };
+            })());
+            _this.downloadedUpdateHelper.setDownloadedFile(installerPath, null, updateInfo, fileInfo);
+            _this.addQuitHandler();
+            _this.emit((_main || _load_main()).UPDATE_DOWNLOADED, _this.updateInfo);
+            return [installerPath];
         })();
     }
     doInstall(installerPath, isSilent, isRunAfter) {

@@ -7,7 +7,7 @@ export declare abstract class Provider<T extends UpdateInfo> {
     protected readonly executor: HttpExecutor<any>;
     readonly useMultipleRangeRequest: boolean;
     protected requestHeaders: OutgoingHttpHeaders | null;
-    protected constructor(executor: HttpExecutor<any>, useMultipleRangeRequest?: boolean);
+    constructor(executor: HttpExecutor<any>, useMultipleRangeRequest?: boolean);
     readonly fileExtraDownloadHeaders: OutgoingHttpHeaders | null;
     setRequestHeaders(value: OutgoingHttpHeaders | null): void;
     abstract getLatestVersion(): Promise<T>;

@@ -14,7 +14,7 @@ export declare class PrivateGitHubProvider extends BaseGitHubProvider<PrivateGit
     getLatestVersion(): Promise<PrivateGitHubUpdateInfo>;
     readonly fileExtraDownloadHeaders: OutgoingHttpHeaders | null;
     private configureHeaders(accept);
-    private getLatestVersionInfo(cancellationToken);
+    private getLatestVersionInfo(basePath, cancellationToken);
     private readonly basePath;
     resolveFiles(updateInfo: PrivateGitHubUpdateInfo): Array<ResolvedUpdateFileInfo>;
 }

@@ -25,12 +25,6 @@ function _load_semver() {
     return _semver = _interopRequireWildcard(require("semver"));
 }
 
-var _url;
-
-function _load_url() {
-    return _url = require("url");
-}
-
 var _main;
 
 function _load_main() {
@@ -50,8 +44,6 @@ class BaseGitHubProvider extends (_main || _load_main()).Provider {
         super(executor, false /* because GitHib uses S3 */);
         this.options = options;
         this.baseUrl = (0, (_main || _load_main()).newBaseUrl)((0, (_builderUtilRuntime || _load_builderUtilRuntime()).githubUrl)(options, defaultHost));
-        const apiHost = defaultHost === "github.com" ? "api.github.com" : defaultHost;
-        this.baseApiUrl = (0, (_main || _load_main()).newBaseUrl)((0, (_builderUtilRuntime || _load_builderUtilRuntime()).githubUrl)(options, apiHost));
     }
     computeGithubBasePath(result) {
         // https://github.com/electron-userland/electron-builder/issues/1903#issuecomment-320881211
@@ -70,8 +62,9 @@ class GitHubProvider extends BaseGitHubProvider {
         var _this = this;
 
         return (0, (_bluebirdLst || _load_bluebirdLst()).coroutine)(function* () {
+            const basePath = _this.basePath;
             const cancellationToken = new (_builderUtilRuntime || _load_builderUtilRuntime()).CancellationToken();
-            const feedXml = yield _this.httpRequest((0, (_main || _load_main()).newUrlFromBase)(`${_this.basePath}.atom`, _this.baseUrl), {
+            const feedXml = yield _this.httpRequest((0, (_main || _load_main()).newUrlFromBase)(`${basePath}.atom`, _this.baseUrl), {
                 Accept: "application/xml, application/atom+xml, text/xml, */*"
             }, cancellationToken);
             const feed = (0, (_builderUtilRuntime || _load_builderUtilRuntime()).parseXml)(feedXml);
@@ -82,7 +75,7 @@ class GitHubProvider extends BaseGitHubProvider {
                     // noinspection TypeScriptValidateJSTypes
                     version = latestRelease.element("link").attribute("href").match(/\/tag\/v?([^\/]+)$/)[1];
                 } else {
-                    version = yield _this.getLatestVersionString(cancellationToken);
+                    version = yield _this.getLatestVersionString(basePath, cancellationToken);
                 }
             } catch (e) {
                 throw (0, (_builderUtilRuntime || _load_builderUtilRuntime()).newError)(`Cannot parse releases feed: ${e.stack || e.message},\nXML:\n${feedXml}`, "ERR_UPDATER_INVALID_RELEASE_FEED");
@@ -115,11 +108,11 @@ class GitHubProvider extends BaseGitHubProvider {
             return result;
         })();
     }
-    getLatestVersionString(cancellationToken) {
+    getLatestVersionString(basePath, cancellationToken) {
         var _this2 = this;
 
         return (0, (_bluebirdLst || _load_bluebirdLst()).coroutine)(function* () {
-            const url = new (_url || _load_url()).URL(`${_this2.computeGithubBasePath(`/repos/${_this2.options.owner}/${_this2.options.repo}/releases`)}/latest`, _this2.baseApiUrl);
+            const url = (0, (_main || _load_main()).newUrlFromBase)(`${basePath}/latest`, _this2.baseUrl);
             try {
                 // do not use API to avoid limit
                 const rawData = yield _this2.httpRequest(url, { Accept: "application/json" }, cancellationToken);
@@ -134,7 +127,7 @@ class GitHubProvider extends BaseGitHubProvider {
         })();
     }
     get basePath() {
-        return `/${this.options.owner}/${this.options.repo}/releases`;
+        return this.computeGithubBasePath(`/${this.options.owner}/${this.options.repo}/releases`);
     }
     resolveFiles(updateInfo) {
         // still replace space to - due to backward compatibility

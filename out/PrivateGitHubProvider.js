@@ -65,9 +65,10 @@ class PrivateGitHubProvider extends (_GitHubProvider || _load_GitHubProvider()).
         var _this = this;
 
         return (0, (_bluebirdLst || _load_bluebirdLst()).coroutine)(function* () {
+            const basePath = _this.basePath;
             const cancellationToken = new (_builderUtilRuntime || _load_builderUtilRuntime()).CancellationToken();
             const channelFile = (0, (_main || _load_main()).getChannelFilename)((0, (_main || _load_main()).getDefaultChannelName)());
-            const releaseInfo = yield _this.getLatestVersionInfo(cancellationToken);
+            const releaseInfo = yield _this.getLatestVersionInfo(basePath, cancellationToken);
             const asset = releaseInfo.assets.find(function (it) {
                 return it.name === channelFile;
             });
@@ -98,11 +99,11 @@ class PrivateGitHubProvider extends (_GitHubProvider || _load_GitHubProvider()).
             Authorization: `token ${this.token}`
         };
     }
-    getLatestVersionInfo(cancellationToken) {
+    getLatestVersionInfo(basePath, cancellationToken) {
         var _this2 = this;
 
         return (0, (_bluebirdLst || _load_bluebirdLst()).coroutine)(function* () {
-            const url = (0, (_main || _load_main()).newUrlFromBase)(`${_this2.basePath}/latest`, _this2.baseUrl);
+            const url = (0, (_main || _load_main()).newUrlFromBase)(`${basePath}/latest`, _this2.baseUrl);
             try {
                 return JSON.parse((yield _this2.httpRequest(url, _this2.configureHeaders("application/vnd.github.v3+json"), cancellationToken)));
             } catch (e) {

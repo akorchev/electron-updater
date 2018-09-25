@@ -3,7 +3,7 @@
 Object.defineProperty(exports, "__esModule", {
     value: true
 });
-exports.readBlockMap = exports.DifferentialDownloader = undefined;
+exports.readBlockMap = exports.DifferentialDownloader = exports.DifferentialDownloaderOptions = undefined;
 
 var _bluebirdLst;
 
@@ -60,15 +60,19 @@ function _load_multipleRangeDownloader() {
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 const inflateRaw = (_bluebirdLst2 || _load_bluebirdLst2()).default.promisify(require("zlib").inflateRaw);
+class DifferentialDownloaderOptions {}
+exports.DifferentialDownloaderOptions = DifferentialDownloaderOptions;
 class DifferentialDownloader {
     // noinspection TypeScriptAbstractClassConstructorCanBeMadeProtected
     constructor(blockAwareFileInfo, httpExecutor, options) {
         this.blockAwareFileInfo = blockAwareFileInfo;
         this.httpExecutor = httpExecutor;
         this.options = options;
-        this.fileMetadataBuffer = null;
         this.logger = options.logger;
         this.baseRequestOptions = (0, (_builderUtilRuntime || _load_builderUtilRuntime()).configureRequestOptionsFromUrl)(options.newUrl, {});
+    }
+    get signatureSize() {
+        return 0;
     }
     createRequestOptions(method = "get", newUrl) {
         return Object.assign({}, newUrl == null ? this.baseRequestOptions : (0, (_builderUtilRuntime || _load_builderUtilRuntime()).configureRequestOptionsFromUrl)(newUrl, {}), { method, headers: Object.assign({}, this.options.requestHeaders, { Accept: "*/*" }) });
@@ -94,7 +98,7 @@ class DifferentialDownloader {
             }
         }
         const newPackageSize = this.blockAwareFileInfo.size;
-        if (downloadSize + copySize + (this.fileMetadataBuffer == null ? 0 : this.fileMetadataBuffer.length) !== newPackageSize) {
+        if (downloadSize + copySize + (this.fileMetadataBuffer == null ? 0 : this.fileMetadataBuffer.length) + this.signatureSize !== newPackageSize) {
             throw new Error(`Internal error, size mismatch: downloadSize: ${downloadSize}, copySize: ${copySize}, newPackageSize: ${newPackageSize}`);
         }
         logger.info(`Full: ${formatBytes(newPackageSize)}, To download: ${formatBytes(downloadSize)} (${Math.round(downloadSize / (newPackageSize / 100))}%)`);
@@ -104,6 +108,7 @@ class DifferentialDownloader {
         var _this = this;
 
         return (0, (_bluebirdLst || _load_bluebirdLst()).coroutine)(function* () {
+            const signature = _this.signatureSize === 0 ? null : yield _this.readRemoteBytes(0, _this.signatureSize - 1);
             const oldFileFd = yield (0, (_fsExtraP || _load_fsExtraP()).open)(_this.options.oldFile, "r");
             const newFileFd = yield (0, (_fsExtraP || _load_fsExtraP()).open)(_this.options.newFile, "w");
             const fileOut = (0, (_fsExtraP || _load_fsExtraP()).createWriteStream)(_this.options.newFile, { fd: newFileFd });
@@ -194,7 +199,13 @@ class DifferentialDownloader {
                         }
                     };
                 }
-                w(0);
+                if (signature == null) {
+                    w(0);
+                } else {
+                    firstStream.write(signature, function () {
+                        return w(0);
+                    });
+                }
             }).then(function () {
                 return (0, (_fsExtraP || _load_fsExtraP()).close)(oldFileFd);
             }).catch(function (error) {

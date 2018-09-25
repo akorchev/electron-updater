@@ -39,8 +39,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 function verifySignature(publisherNames, tempUpdateFile, logger) {
     return new (_bluebirdLst || _load_bluebirdLst()).default((resolve, reject) => {
         // https://github.com/electron-userland/electron-builder/issues/2421
-        // https://github.com/electron-userland/electron-builder/issues/2535
-        (0, (_child_process || _load_child_process()).execFile)("powershell.exe", ["-NoProfile", "-NonInteractive", "-InputFormat", "None", "-Command", `Get-AuthenticodeSignature '${tempUpdateFile}' | ConvertTo-Json -Compress`], {
+        (0, (_child_process || _load_child_process()).execFile)("powershell.exe", [`Get-AuthenticodeSignature '${tempUpdateFile}' | ConvertTo-Json -Compress`], {
             timeout: 30 * 1000
         }, (error, stdout, stderr) => {
             if (error != null || stderr) {
@@ -50,7 +49,7 @@ function verifySignature(publisherNames, tempUpdateFile, logger) {
                     return;
                 }
                 try {
-                    (0, (_child_process || _load_child_process()).execFileSync)("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", "ConvertTo-Json test"], { timeout: 10 * 1000 });
+                    (0, (_child_process || _load_child_process()).execFileSync)("powershell.exe", ["ConvertTo-Json test"], { timeout: 10 * 1000 });
                 } catch (testError) {
                     logger.warn(`Cannot execute ConvertTo-Json: ${testError.message}. Ignoring signature validation due to unsupported powershell version. Please upgrade to powershell 3 or higher.`);
                     resolve(null);

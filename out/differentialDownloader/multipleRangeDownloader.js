@@ -115,7 +115,7 @@ function checkIsRangesSupported(response, reject) {
     if (response.statusCode !== 206) {
         const acceptRanges = (0, (_builderUtilRuntime || _load_builderUtilRuntime()).safeGetHeader)(response, "accept-ranges");
         if (acceptRanges == null || acceptRanges === "none") {
-            reject(new Error(`Server doesn't support Accept-Ranges (response code ${response.statusCode})`));
+            reject(new Error("Server doesn't support Accept-Ranges"));
             return false;
         }
     }

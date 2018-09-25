@@ -5,18 +5,11 @@ import { OutgoingHttpHeaders } from "http";
 import { Lazy } from "lazy-val";
 import "source-map-support/register";
 import { Logger, Provider, UpdateCheckResult, UpdaterSignal } from "./main";
-import { DownloadedUpdateHelper } from "./DownloadedUpdateHelper";
 export declare abstract class AppUpdater extends EventEmitter {
     /**
      * Whether to automatically download an update when it is found.
      */
     autoDownload: boolean;
-    /**
-     * Whether to automatically install a downloaded update on app quit (if `quitAndInstall` was not called before).
-     *
-     * Applicable only on Windows and Linux.
-     */
-    autoInstallOnAppQuit: boolean;
     /**
      * *GitHub provider only.* Whether to allow update to pre-release versions. Defaults to `true` if application version contains prerelease components (e.g. `0.12.1-alpha.1`, here `alpha` is a prerelease component), otherwise `false`.
      *
@@ -38,7 +31,6 @@ export declare abstract class AppUpdater extends EventEmitter {
      */
     readonly currentVersion: string;
     private _channel;
-    protected readonly downloadedUpdateHelper: DownloadedUpdateHelper;
     /**
      * Get the update channel. Not applicable for GitHub. Doesn't return `channel` from the update configuration, only if was previously set.
      */
@@ -77,13 +69,13 @@ export declare abstract class AppUpdater extends EventEmitter {
     private checkForUpdatesPromise;
     protected readonly app: Electron.App;
     protected updateInfo: UpdateInfo | null;
-    protected constructor(options: AllPublishOptions | null | undefined, app?: Electron.App);
+    constructor(options: AllPublishOptions | null | undefined, app?: any);
     getFeedURL(): string | null | undefined;
     /**
      * Configure update provider. If value is `string`, [GenericServerOptions](/configuration/publish.md#genericserveroptions) will be set with value as `url`.
      * @param options If you want to override configuration in the `app-update.yml`.
      */
-    setFeedURL(options: PublishConfiguration | AllPublishOptions | string): void;
+    setFeedURL(options: PublishConfiguration | AllPublishOptions): void;
     /**
      * Asks the server whether there is an update.
      */
@@ -92,7 +84,6 @@ export declare abstract class AppUpdater extends EventEmitter {
     private isStagingMatch(updateInfo);
     private _checkForUpdates();
     private computeFinalHeaders(headers);
-    protected getUpdateInfo(): Promise<UpdateInfo>;
     private doCheckForUpdates();
     protected onUpdateAvailable(updateInfo: UpdateInfo): void;
     /**

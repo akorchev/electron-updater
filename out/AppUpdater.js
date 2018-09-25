@@ -11,6 +11,12 @@ function _load_bluebirdLst() {
     return _bluebirdLst = require("bluebird-lst");
 }
 
+var _bluebirdLst2;
+
+function _load_bluebirdLst2() {
+    return _bluebirdLst2 = _interopRequireDefault(require("bluebird-lst"));
+}
+
 var _builderUtilRuntime;
 
 function _load_builderUtilRuntime() {
@@ -93,12 +99,6 @@ function _load_providerFactory() {
     return _providerFactory = require("./providerFactory");
 }
 
-var _DownloadedUpdateHelper;
-
-function _load_DownloadedUpdateHelper() {
-    return _DownloadedUpdateHelper = require("./DownloadedUpdateHelper");
-}
-
 function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
@@ -110,12 +110,6 @@ class AppUpdater extends (_events || _load_events()).EventEmitter {
          * Whether to automatically download an update when it is found.
          */
         this.autoDownload = true;
-        /**
-         * Whether to automatically install a downloaded update on app quit (if `quitAndInstall` was not called before).
-         *
-         * Applicable only on Windows and Linux.
-         */
-        this.autoInstallOnAppQuit = true;
         /**
          * *GitHub provider only.* Whether to allow update to pre-release versions. Defaults to `true` if application version contains prerelease components (e.g. `0.12.1-alpha.1`, here `alpha` is a prerelease component), otherwise `false`.
          *
@@ -133,34 +127,25 @@ class AppUpdater extends (_events || _load_events()).EventEmitter {
          */
         this.allowDowngrade = false;
         this._channel = null;
-        /**
-         *  The request headers.
-         */
-        this.requestHeaders = null;
         this._logger = console;
         /**
          * For type safety you can use signals, e.g. `autoUpdater.signals.updateDownloaded(() => {})` instead of `autoUpdater.on('update-available', () => {})`
          */
         this.signals = new (_main || _load_main()).UpdaterSignal(this);
-        this._appUpdateConfigPath = null;
         this.updateAvailable = false;
-        this.clientPromise = null;
         this.stagingUserIdPromise = new (_lazyVal || _load_lazyVal()).Lazy(() => this.getOrCreateStagingUserId());
         // public, allow to read old config for anyone
         this.configOnDisk = new (_lazyVal || _load_lazyVal()).Lazy(() => this.loadUpdateConfig());
-        this.checkForUpdatesPromise = null;
-        this.updateInfo = null;
         this.on("error", error => {
             this._logger.error(`Error: ${error.stack || error.message}`);
         });
         if (app != null || global.__test_app != null) {
             this.app = app || global.__test_app;
-            this.untilAppReady = Promise.resolve();
-            this.httpExecutor = null;
+            this.untilAppReady = (_bluebirdLst2 || _load_bluebirdLst2()).default.resolve();
         } else {
             this.app = require("electron").app;
             this.httpExecutor = new (_electronHttpExecutor || _load_electronHttpExecutor()).ElectronHttpExecutor((authInfo, callback) => this.emit("login", authInfo, callback));
-            this.untilAppReady = new Promise(resolve => {
+            this.untilAppReady = new (_bluebirdLst2 || _load_bluebirdLst2()).default(resolve => {
                 if (this.app.isReady()) {
                     resolve();
                 } else {
@@ -168,7 +153,6 @@ class AppUpdater extends (_events || _load_events()).EventEmitter {
                 }
             });
         }
-        this.downloadedUpdateHelper = new (_DownloadedUpdateHelper || _load_DownloadedUpdateHelper()).DownloadedUpdateHelper(this.app.getPath("userData"));
         const currentVersionString = this.app.getVersion();
         const currentVersion = (0, (_semver || _load_semver()).valid)(currentVersionString);
         if (currentVersion == null) {
@@ -212,7 +196,6 @@ class AppUpdater extends (_events || _load_events()).EventEmitter {
     set logger(value) {
         this._logger = value == null ? new NoOpLogger() : value;
     }
-    // noinspection JSUnusedGlobalSymbols
     /**
      * test only
      * @private
@@ -259,7 +242,7 @@ class AppUpdater extends (_events || _load_events()).EventEmitter {
     }
     checkForUpdatesAndNotify() {
         if ((_electronIsDev || _load_electronIsDev()).default) {
-            return Promise.resolve(null);
+            return (_bluebirdLst2 || _load_bluebirdLst2()).default.resolve(null);
         }
         this.signals.updateDownloaded(it => {
             new (_electron || _load_electron()).Notification({
@@ -313,11 +296,10 @@ class AppUpdater extends (_events || _load_events()).EventEmitter {
         }
         return headers;
     }
-    getUpdateInfo() {
+    doCheckForUpdates() {
         var _this3 = this;
 
         return (0, (_bluebirdLst || _load_bluebirdLst()).coroutine)(function* () {
-            yield _this3.untilAppReady;
             if (_this3.clientPromise == null) {
                 _this3.clientPromise = _this3.configOnDisk.value.then(function (it) {
                     return (0, (_providerFactory || _load_providerFactory()).createClient)(it, _this3);
@@ -326,38 +308,31 @@ class AppUpdater extends (_events || _load_events()).EventEmitter {
             const client = yield _this3.clientPromise;
             const stagingUserId = yield _this3.stagingUserIdPromise.value;
             client.setRequestHeaders(_this3.computeFinalHeaders({ "X-User-Staging-Id": stagingUserId }));
-            return yield client.getLatestVersion();
-        })();
-    }
-    doCheckForUpdates() {
-        var _this4 = this;
-
-        return (0, (_bluebirdLst || _load_bluebirdLst()).coroutine)(function* () {
-            const updateInfo = yield _this4.getUpdateInfo();
+            const updateInfo = yield client.getLatestVersion();
             const latestVersion = (0, (_semver || _load_semver()).valid)(updateInfo.version);
             if (latestVersion == null) {
                 throw (0, (_builderUtilRuntime || _load_builderUtilRuntime()).newError)(`Latest version (from update server) is not valid semver version: "${latestVersion}`, "ERR_UPDATER_INVALID_VERSION");
             }
-            const isStagingMatch = yield _this4.isStagingMatch(updateInfo);
-            if (!isStagingMatch || (_this4.allowDowngrade && !hasPrereleaseComponents(latestVersion) ? (0, (_semver || _load_semver()).eq)(latestVersion, _this4.currentVersion) : !(0, (_semver || _load_semver()).gt)(latestVersion, _this4.currentVersion))) {
-                _this4.updateAvailable = false;
-                _this4._logger.info(`Update for version ${_this4.currentVersion} is not available (latest version: ${updateInfo.version}, downgrade is ${_this4.allowDowngrade ? "allowed" : "disallowed"}.`);
-                _this4.emit("update-not-available", updateInfo);
+            const isStagingMatch = yield _this3.isStagingMatch(updateInfo);
+            if (!isStagingMatch || (_this3.allowDowngrade && !hasPrereleaseComponents(latestVersion) ? (0, (_semver || _load_semver()).eq)(latestVersion, _this3.currentVersion) : !(0, (_semver || _load_semver()).gt)(latestVersion, _this3.currentVersion))) {
+                _this3.updateAvailable = false;
+                _this3._logger.info(`Update for version ${_this3.currentVersion} is not available (latest version: ${updateInfo.version}, downgrade is ${_this3.allowDowngrade ? "allowed" : "disallowed"}.`);
+                _this3.emit("update-not-available", updateInfo);
                 return {
                     versionInfo: updateInfo,
                     updateInfo
                 };
             }
-            _this4.updateAvailable = true;
-            _this4.updateInfo = updateInfo;
-            _this4.onUpdateAvailable(updateInfo);
+            _this3.updateAvailable = true;
+            _this3.updateInfo = updateInfo;
+            _this3.onUpdateAvailable(updateInfo);
             const cancellationToken = new (_builderUtilRuntime || _load_builderUtilRuntime()).CancellationToken();
             //noinspection ES6MissingAwait
             return {
                 versionInfo: updateInfo,
                 updateInfo,
                 cancellationToken,
-                downloadPromise: _this4.autoDownload ? _this4.downloadUpdate(cancellationToken) : null
+                downloadPromise: _this3.autoDownload ? _this3.downloadUpdate(cancellationToken) : null
             };
         })();
     }
@@ -370,22 +345,22 @@ class AppUpdater extends (_events || _load_events()).EventEmitter {
      * @returns {Promise<string>} Path to downloaded file.
      */
     downloadUpdate(cancellationToken = new (_builderUtilRuntime || _load_builderUtilRuntime()).CancellationToken()) {
-        var _this5 = this;
+        var _this4 = this;
 
         return (0, (_bluebirdLst || _load_bluebirdLst()).coroutine)(function* () {
-            const updateInfo = _this5.updateInfo;
+            const updateInfo = _this4.updateInfo;
             if (updateInfo == null) {
                 const error = new Error("Please check update first");
-                _this5.dispatchError(error);
+                _this4.dispatchError(error);
                 throw error;
             }
-            _this5._logger.info(`Downloading update from ${(0, (_builderUtilRuntime || _load_builderUtilRuntime()).asArray)(updateInfo.files).map(function (it) {
+            _this4._logger.info(`Downloading update from ${(0, (_builderUtilRuntime || _load_builderUtilRuntime()).asArray)(updateInfo.files).map(function (it) {
                 return it.url;
             }).join(", ")}`);
             try {
-                return yield _this5.doDownloadUpdate(updateInfo, cancellationToken);
+                return yield _this4.doDownloadUpdate(updateInfo, cancellationToken);
             } catch (e) {
-                _this5.dispatchError(e);
+                _this4.dispatchError(e);
                 throw e;
             }
         })();
@@ -394,51 +369,51 @@ class AppUpdater extends (_events || _load_events()).EventEmitter {
         this.emit("error", e, (e.stack || e).toString());
     }
     loadUpdateConfig() {
-        var _this6 = this;
+        var _this5 = this;
 
         return (0, (_bluebirdLst || _load_bluebirdLst()).coroutine)(function* () {
-            if (_this6._appUpdateConfigPath == null) {
-                _this6._appUpdateConfigPath = (_electronIsDev || _load_electronIsDev()).default ? _path.join(_this6.app.getAppPath(), "dev-app-update.yml") : _path.join(process.resourcesPath, "app-update.yml");
+            if (_this5._appUpdateConfigPath == null) {
+                _this5._appUpdateConfigPath = (_electronIsDev || _load_electronIsDev()).default ? _path.join(_this5.app.getAppPath(), "dev-app-update.yml") : _path.join(process.resourcesPath, "app-update.yml");
             }
-            return (0, (_jsYaml || _load_jsYaml()).safeLoad)((yield (0, (_fsExtraP || _load_fsExtraP()).readFile)(_this6._appUpdateConfigPath, "utf-8")));
+            return (0, (_jsYaml || _load_jsYaml()).safeLoad)((yield (0, (_fsExtraP || _load_fsExtraP()).readFile)(_this5._appUpdateConfigPath, "utf-8")));
         })();
     }
     /*** @private */
     computeRequestHeaders() {
-        var _this7 = this;
+        var _this6 = this;
 
         return (0, (_bluebirdLst || _load_bluebirdLst()).coroutine)(function* () {
-            const fileExtraDownloadHeaders = (yield _this7.provider).fileExtraDownloadHeaders;
+            const fileExtraDownloadHeaders = (yield _this6.provider).fileExtraDownloadHeaders;
             if (fileExtraDownloadHeaders != null) {
-                const requestHeaders = _this7.requestHeaders;
+                const requestHeaders = _this6.requestHeaders;
                 return requestHeaders == null ? fileExtraDownloadHeaders : Object.assign({}, fileExtraDownloadHeaders, requestHeaders);
             }
-            return _this7.computeFinalHeaders({ Accept: "*/*" });
+            return _this6.computeFinalHeaders({ Accept: "*/*" });
         })();
     }
     getOrCreateStagingUserId() {
-        var _this8 = this;
+        var _this7 = this;
 
         return (0, (_bluebirdLst || _load_bluebirdLst()).coroutine)(function* () {
-            const file = _path.join(_this8.app.getPath("userData"), ".updaterId");
+            const file = _path.join(_this7.app.getPath("userData"), ".updaterId");
             try {
                 const id = yield (0, (_fsExtraP || _load_fsExtraP()).readFile)(file, "utf-8");
                 if ((_builderUtilRuntime || _load_builderUtilRuntime()).UUID.check(id)) {
                     return id;
                 } else {
-                    _this8._logger.warn(`Staging user id file exists, but content was invalid: ${id}`);
+                    _this7._logger.warn(`Staging user id file exists, but content was invalid: ${id}`);
                 }
             } catch (e) {
                 if (e.code !== "ENOENT") {
-                    _this8._logger.warn(`Couldn't read staging user ID, creating a blank one: ${e}`);
+                    _this7._logger.warn(`Couldn't read staging user ID, creating a blank one: ${e}`);
                 }
             }
             const id = (_builderUtilRuntime || _load_builderUtilRuntime()).UUID.v5((0, (_crypto || _load_crypto()).randomBytes)(4096), (_builderUtilRuntime || _load_builderUtilRuntime()).UUID.OID);
-            _this8._logger.info(`Generated new staging user ID: ${id}`);
+            _this7._logger.info(`Generated new staging user ID: ${id}`);
             try {
                 yield (0, (_fsExtraP || _load_fsExtraP()).outputFile)(file, id);
             } catch (e) {
-                _this8._logger.warn(`Couldn't write out staging user ID: ${e}`);
+                _this7._logger.warn(`Couldn't write out staging user ID: ${e}`);
             }
             return id;
         })();

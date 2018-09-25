@@ -31,7 +31,6 @@ class Provider {
     constructor(executor, useMultipleRangeRequest = true) {
         this.executor = executor;
         this.useMultipleRangeRequest = useMultipleRangeRequest;
-        this.requestHeaders = null;
     }
     get fileExtraDownloadHeaders() {
         return null;
